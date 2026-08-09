@@ -3200,59 +3200,88 @@ function createDefaultConfig() {
 function getEntityList(hass) {
     if (!hass || !hass.states)
         return [];
-    return Object.keys(hass.states).sort();
+    try {
+        return Object.keys(hass.states).sort();
+    }
+    catch (e) {
+        console.error('Error fetching entity list:', e);
+        return [];
+    }
 }
 function getEntityName(entityId, hass) {
-    if (!hass || !hass.states || !hass.states[entityId])
+    if (!hass || !hass.states || !entityId || !hass.states[entityId])
+        return entityId || 'Unknown Entity';
+    try {
+        const entity = hass.states[entityId];
+        return entity?.attributes?.friendly_name || entityId;
+    }
+    catch (e) {
         return entityId;
-    const entity = hass.states[entityId];
-    return entity.attributes.friendly_name || entityId;
+    }
 }
 function getEntityIcon(entityId, hass) {
-    if (!hass || !hass.states || !hass.states[entityId])
+    if (!hass || !hass.states || !entityId || !hass.states[entityId])
         return 'mdi:bookmark';
-    const entity = hass.states[entityId];
-    if (entity.attributes.icon)
-        return entity.attributes.icon;
-    const domain = entityId.split('.')[0];
-    switch (domain) {
-        case 'light':
-            return 'mdi:lightbulb';
-        case 'switch':
-            return 'mdi:toggle-switch';
-        case 'sensor':
-            return 'mdi:eye';
-        case 'binary_sensor':
-            return 'mdi:radiobox-marked';
-        case 'climate':
-            return 'mdi:thermostat';
-        case 'media_player':
-            return 'mdi:cast';
-        case 'lock':
-            return 'mdi:lock';
-        case 'cover':
-            return 'mdi:window-open';
-        case 'fan':
-            return 'mdi:fan';
-        case 'camera':
-            return 'mdi:camera';
-        default:
-            return 'mdi:shape';
+    try {
+        const entity = hass.states[entityId];
+        if (entity?.attributes?.icon)
+            return entity.attributes.icon;
+        const domain = entityId.split('.')[0];
+        switch (domain) {
+            case 'light':
+                return 'mdi:lightbulb';
+            case 'switch':
+                return 'mdi:toggle-switch';
+            case 'sensor':
+                return 'mdi:eye';
+            case 'binary_sensor':
+                return 'mdi:radiobox-marked';
+            case 'climate':
+                return 'mdi:thermostat';
+            case 'media_player':
+                return 'mdi:cast';
+            case 'lock':
+                return 'mdi:lock';
+            case 'cover':
+                return 'mdi:window-open';
+            case 'fan':
+                return 'mdi:fan';
+            case 'camera':
+                return 'mdi:camera';
+            default:
+                return 'mdi:shape';
+        }
+    }
+    catch (e) {
+        return 'mdi:shape';
     }
 }
 function formatEntityState(entityId, hass) {
-    if (!hass || !hass.states || !hass.states[entityId])
+    if (!hass || !hass.states || !entityId || !hass.states[entityId])
         return 'OFFLINE';
-    const entity = hass.states[entityId];
-    const unit = entity.attributes.unit_of_measurement ? ` ${entity.attributes.unit_of_measurement}` : '';
-    return `${entity.state}${unit}`;
+    try {
+        const entity = hass.states[entityId];
+        if (!entity || entity.state === undefined || entity.state === null)
+            return 'UNKNOWN';
+        const unit = entity.attributes?.unit_of_measurement ? ` ${entity.attributes.unit_of_measurement}` : '';
+        return `${entity.state}${unit}`;
+    }
+    catch (e) {
+        return 'ERROR';
+    }
 }
 function computeStyleString(styleObj) {
-    if (!styleObj)
+    if (!styleObj || typeof styleObj !== 'object')
         return '';
-    return Object.entries(styleObj)
-        .map(([key, val]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${val};`)
-        .join(' ');
+    try {
+        return Object.entries(styleObj)
+            .filter(([key, val]) => key && val !== undefined && val !== null)
+            .map(([key, val]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${val};`)
+            .join(' ');
+    }
+    catch (e) {
+        return '';
+    }
 }
 
 let PebCanvas = class PebCanvas extends i {
@@ -3268,12 +3297,14 @@ let PebCanvas = class PebCanvas extends i {
         this.initialTopPct = 50;
         this.initialLeftPct = 50;
         this._onMouseMove = (e) => {
-            if (!this.isDragging || this.dragIndex < 0)
+            if (!this.isDragging || this.dragIndex < 0 || !this.elements)
                 return;
             const wrapper = this.shadowRoot?.querySelector('.canvas-wrapper');
             if (!wrapper)
                 return;
             const rect = wrapper.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0)
+                return;
             const deltaX = e.clientX - this.dragStartX;
             const deltaY = e.clientY - this.dragStartY;
             const deltaLeftPct = (deltaX / rect.width) * 100;
@@ -3283,7 +3314,7 @@ let PebCanvas = class PebCanvas extends i {
             newLeftPct = Math.round(newLeftPct * 10) / 10;
             newTopPct = Math.round(newTopPct * 10) / 10;
             const updatedElements = [...this.elements];
-            const targetEl = JSON.parse(JSON.stringify(updatedElements[this.dragIndex]));
+            const targetEl = JSON.parse(JSON.stringify(updatedElements[this.dragIndex] || {}));
             if (!targetEl.style)
                 targetEl.style = {};
             targetEl.style.top = `${newTopPct}%`;
@@ -3326,6 +3357,8 @@ let PebCanvas = class PebCanvas extends i {
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: #1c1c1e;
+      min-width: 300px;
+      min-height: 200px;
     }
 
     .background-img {
@@ -3422,7 +3455,7 @@ let PebCanvas = class PebCanvas extends i {
         this.dragIndex = index;
         this.dragStartX = e.clientX;
         this.dragStartY = e.clientY;
-        const el = this.elements[index];
+        const el = this.elements?.[index] || {};
         const topStr = String(el.style?.top || '50%');
         const leftStr = String(el.style?.left || '50%');
         this.initialTopPct = parseFloat(topStr.replace('%', '')) || 50;
@@ -3436,46 +3469,53 @@ let PebCanvas = class PebCanvas extends i {
         }));
     }
     _renderElementContent(el) {
-        const entityId = el.entity || '';
-        const stateVal = formatEntityState(entityId, this.hass);
-        const iconName = el.icon || getEntityIcon(entityId, this.hass);
-        switch (el.type) {
-            case 'state-badge':
-                return b `
-          <div class="badge-preview">
-            <span>🔹</span>
-            <span>${entityId ? getEntityName(entityId, this.hass) : 'Badge'}: <strong>${stateVal}</strong></span>
-          </div>
-        `;
-            case 'state-icon':
-            case 'icon':
-                return b `
-          <div class="icon-preview" title="${entityId}">
-            💡 <span>${entityId ? stateVal : iconName}</span>
-          </div>
-        `;
-            case 'state-label':
-                return b `
-          <div class="label-preview">
-            ${el.prefix || ''}${entityId ? stateVal : 'Label text'}${el.suffix || ''}
-          </div>
-        `;
-            case 'action-button':
-            case 'service-button':
-                return b `
-          <div class="button-preview">
-            ${el.title || 'Button'}
-          </div>
-        `;
-            case 'image':
-                return b `
-          <img class="image-preview" src="${el.image || 'https://via.placeholder.com/100'}" alt="Overlay" />
-        `;
-            default:
-                return b `<div class="label-preview">${el.type || 'Element'}</div>`;
+        try {
+            const entityId = el.entity || '';
+            const stateVal = formatEntityState(entityId, this.hass);
+            const iconName = el.icon || getEntityIcon(entityId, this.hass);
+            switch (el.type) {
+                case 'state-badge':
+                    return b `
+            <div class="badge-preview">
+              <span>🔹</span>
+              <span>${entityId ? getEntityName(entityId, this.hass) : 'Badge'}: <strong>${stateVal}</strong></span>
+            </div>
+          `;
+                case 'state-icon':
+                case 'icon':
+                    return b `
+            <div class="icon-preview" title="${entityId}">
+              💡 <span>${entityId ? stateVal : iconName}</span>
+            </div>
+          `;
+                case 'state-label':
+                    return b `
+            <div class="label-preview">
+              ${el.prefix || ''}${entityId ? stateVal : 'Label text'}${el.suffix || ''}
+            </div>
+          `;
+                case 'action-button':
+                case 'service-button':
+                    return b `
+            <div class="button-preview">
+              ${el.title || 'Button'}
+            </div>
+          `;
+                case 'image':
+                    return b `
+            <img class="image-preview" src="${el.image || 'https://via.placeholder.com/100'}" alt="Overlay" />
+          `;
+                default:
+                    return b `<div class="label-preview">${el.type || 'Element'}</div>`;
+            }
+        }
+        catch (err) {
+            console.error('Error rendering element content:', err);
+            return b `<div class="label-preview">⚠️ ${el.type || 'Element'}</div>`;
         }
     }
     render() {
+        const validElements = Array.isArray(this.elements) ? this.elements : [];
         return b `
       <div class="canvas-wrapper">
         <img
@@ -3483,17 +3523,17 @@ let PebCanvas = class PebCanvas extends i {
           src="${this.image || 'https://demo.home-assistant.io/stub_config/floorplan.png'}"
           alt="Floorplan Background"
         />
-        ${this.elements.map((el, index) => {
+        ${validElements.map((el, index) => {
             const isSelected = index === this.selectedIndex;
-            const styleAttr = computeStyleString(el.style);
+            const styleAttr = computeStyleString(el?.style);
             return b `
             <div
               class="element-wrapper ${isSelected ? 'selected' : ''}"
               style="${styleAttr}"
               @mousedown=${(e) => this._onMouseDown(e, index)}
             >
-              ${isSelected ? b `<span class="element-tag">#${index + 1} ${el.type}</span>` : ''}
-              ${this._renderElementContent(el)}
+              ${isSelected ? b `<span class="element-tag">#${index + 1} ${el?.type || 'element'}</span>` : ''}
+              ${this._renderElementContent(el || { type: 'unknown' })}
             </div>
           `;
         })}

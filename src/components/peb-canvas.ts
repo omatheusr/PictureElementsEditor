@@ -41,6 +41,8 @@ export class PebCanvas extends LitElement {
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: #1c1c1e;
+      min-width: 300px;
+      min-height: 200px;
     }
 
     .background-img {
@@ -139,7 +141,7 @@ export class PebCanvas extends LitElement {
     this.dragStartX = e.clientX;
     this.dragStartY = e.clientY;
 
-    const el = this.elements[index];
+    const el = this.elements?.[index] || {};
     const topStr = String(el.style?.top || '50%');
     const leftStr = String(el.style?.left || '50%');
 
@@ -159,12 +161,14 @@ export class PebCanvas extends LitElement {
   }
 
   private _onMouseMove = (e: MouseEvent) => {
-    if (!this.isDragging || this.dragIndex < 0) return;
+    if (!this.isDragging || this.dragIndex < 0 || !this.elements) return;
 
     const wrapper = this.shadowRoot?.querySelector('.canvas-wrapper') as HTMLElement;
     if (!wrapper) return;
 
     const rect = wrapper.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
     const deltaX = e.clientX - this.dragStartX;
     const deltaY = e.clientY - this.dragStartY;
 
@@ -178,7 +182,7 @@ export class PebCanvas extends LitElement {
     newTopPct = Math.round(newTopPct * 10) / 10;
 
     const updatedElements = [...this.elements];
-    const targetEl = JSON.parse(JSON.stringify(updatedElements[this.dragIndex]));
+    const targetEl = JSON.parse(JSON.stringify(updatedElements[this.dragIndex] || {}));
 
     if (!targetEl.style) targetEl.style = {};
     targetEl.style.top = `${newTopPct}%`;
@@ -203,48 +207,54 @@ export class PebCanvas extends LitElement {
   };
 
   private _renderElementContent(el: PictureElementConfig) {
-    const entityId = el.entity || '';
-    const stateVal = formatEntityState(entityId, this.hass);
-    const iconName = el.icon || getEntityIcon(entityId, this.hass);
+    try {
+      const entityId = el.entity || '';
+      const stateVal = formatEntityState(entityId, this.hass);
+      const iconName = el.icon || getEntityIcon(entityId, this.hass);
 
-    switch (el.type) {
-      case 'state-badge':
-        return html`
-          <div class="badge-preview">
-            <span>🔹</span>
-            <span>${entityId ? getEntityName(entityId, this.hass) : 'Badge'}: <strong>${stateVal}</strong></span>
-          </div>
-        `;
-      case 'state-icon':
-      case 'icon':
-        return html`
-          <div class="icon-preview" title="${entityId}">
-            💡 <span>${entityId ? stateVal : iconName}</span>
-          </div>
-        `;
-      case 'state-label':
-        return html`
-          <div class="label-preview">
-            ${el.prefix || ''}${entityId ? stateVal : 'Label text'}${el.suffix || ''}
-          </div>
-        `;
-      case 'action-button':
-      case 'service-button':
-        return html`
-          <div class="button-preview">
-            ${el.title || 'Button'}
-          </div>
-        `;
-      case 'image':
-        return html`
-          <img class="image-preview" src="${el.image || 'https://via.placeholder.com/100'}" alt="Overlay" />
-        `;
-      default:
-        return html`<div class="label-preview">${el.type || 'Element'}</div>`;
+      switch (el.type) {
+        case 'state-badge':
+          return html`
+            <div class="badge-preview">
+              <span>🔹</span>
+              <span>${entityId ? getEntityName(entityId, this.hass) : 'Badge'}: <strong>${stateVal}</strong></span>
+            </div>
+          `;
+        case 'state-icon':
+        case 'icon':
+          return html`
+            <div class="icon-preview" title="${entityId}">
+              💡 <span>${entityId ? stateVal : iconName}</span>
+            </div>
+          `;
+        case 'state-label':
+          return html`
+            <div class="label-preview">
+              ${el.prefix || ''}${entityId ? stateVal : 'Label text'}${el.suffix || ''}
+            </div>
+          `;
+        case 'action-button':
+        case 'service-button':
+          return html`
+            <div class="button-preview">
+              ${el.title || 'Button'}
+            </div>
+          `;
+        case 'image':
+          return html`
+            <img class="image-preview" src="${el.image || 'https://via.placeholder.com/100'}" alt="Overlay" />
+          `;
+        default:
+          return html`<div class="label-preview">${el.type || 'Element'}</div>`;
+      }
+    } catch (err) {
+      console.error('Error rendering element content:', err);
+      return html`<div class="label-preview">⚠️ ${el.type || 'Element'}</div>`;
     }
   }
 
   render() {
+    const validElements = Array.isArray(this.elements) ? this.elements : [];
     return html`
       <div class="canvas-wrapper">
         <img
@@ -252,17 +262,17 @@ export class PebCanvas extends LitElement {
           src="${this.image || 'https://demo.home-assistant.io/stub_config/floorplan.png'}"
           alt="Floorplan Background"
         />
-        ${this.elements.map((el, index) => {
+        ${validElements.map((el, index) => {
           const isSelected = index === this.selectedIndex;
-          const styleAttr = computeStyleString(el.style);
+          const styleAttr = computeStyleString(el?.style);
           return html`
             <div
               class="element-wrapper ${isSelected ? 'selected' : ''}"
               style="${styleAttr}"
               @mousedown=${(e: MouseEvent) => this._onMouseDown(e, index)}
             >
-              ${isSelected ? html`<span class="element-tag">#${index + 1} ${el.type}</span>` : ''}
-              ${this._renderElementContent(el)}
+              ${isSelected ? html`<span class="element-tag">#${index + 1} ${el?.type || 'element'}</span>` : ''}
+              ${this._renderElementContent(el || { type: 'unknown' })}
             </div>
           `;
         })}
