@@ -7,25 +7,25 @@ A dedicated **Left Sidebar Panel App** for Home Assistant that lets you visually
 
 ---
 
-## ⚡ Automatic Sidebar Installation (Like Terminal / HACS)
+## ⚡ Installation & Setup
 
-Installing **Picture Elements Visual Editor** adds **"Floorplan Editor"** directly to your Home Assistant left sidebar navigator automatically — no YAML configuration required.
+### Step 1: Download via HACS
 
-### Simple Installation Steps
+1. Open **HACS** in Home Assistant → Click the 3 dots (upper right) → **Custom repositories**.
+2. Enter your repository URL (`https://github.com/your-username/PictureElementsEditor`).
+3. Select Category: **Integration**.
+4. Click **Download**.
+5. **Restart Home Assistant**.
 
-1. Copy the `custom_components/picture_elements_editor` folder to your Home Assistant `/config/custom_components/` directory:
+---
 
-```text
-/config/custom_components/picture_elements_editor/
-├── __init__.py
-├── manifest.json
-└── www/
-    └── picture-elements-editor.js
-```
+### Step 2: Add Integration in Home Assistant UI
 
-2. **Restart Home Assistant**.
+1. Go to **Settings** → **Devices & Services** → Click **Add Integration** (bottom right).
+2. Search for **"Picture Elements Visual Editor"**.
+3. Click **Submit**.
 
-That's it! **"Floorplan Editor"** will automatically appear in your Home Assistant left navigation bar (`/picture-elements-editor`).
+**"Floorplan Editor"** will instantly appear in your main Home Assistant left navigation bar (`/picture-elements-editor`)!
 
 ---
 
@@ -42,18 +42,6 @@ That's it! **"Floorplan Editor"** will automatically appear in your Home Assista
   - **Custom CSS Rules**: Add/edit/remove any arbitrary CSS key-value pair.
 - ❓ **Inline Documentation Tooltips (`?`)**: Help buttons next to every property explaining usage and examples.
 - 🔄 **Live 2-Way YAML Sync**: Instantly switch between the visual canvas and raw YAML code.
-
----
-
-## 💻 Development & Building
-
-```bash
-# Install dependencies
-npm install
-
-# Build production bundle
-npm run build
-```
 
 ---
 

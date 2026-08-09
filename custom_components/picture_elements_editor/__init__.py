@@ -1,6 +1,7 @@
 """Custom integration for registering Picture Elements Editor in Home Assistant's left sidebar."""
 import logging
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.components import frontend
 from homeassistant.components.http import StaticPathConfig
 
@@ -13,19 +14,26 @@ PANEL_ICON = "mdi:floor-plan"
 JS_FILENAME = "picture-elements-editor.js"
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Picture Elements Editor side panel in Home Assistant."""
+    """Set up the integration via YAML if present."""
+    return True
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Picture Elements Editor from a config entry (UI integration)."""
     _LOGGER.info("Setting up Picture Elements Editor Sidebar Panel")
 
     # Serve JS bundle over HTTP
-    await hass.http.async_register_static_paths([
-        StaticPathConfig(
-            url_path=f"/{PANEL_URL_PATH}/{JS_FILENAME}",
-            path=hass.config.path(f"custom_components/{DOMAIN}/www/{JS_FILENAME}"),
-            cache_headers=False,
-        )
-    ])
+    try:
+        await hass.http.async_register_static_paths([
+            StaticPathConfig(
+                url_path=f"/{PANEL_URL_PATH}/{JS_FILENAME}",
+                path=hass.config.path(f"custom_components/{DOMAIN}/www/{JS_FILENAME}"),
+                cache_headers=False,
+            )
+        ])
+    except Exception as err:
+        _LOGGER.debug("Static path already registered or updated: %s", err)
 
-    # Register custom panel in Home Assistant main left sidebar
+    # Register custom panel in Home Assistant main left sidebar navigator
     frontend.async_register_built_in_panel(
         hass,
         component_name="custom",
@@ -33,10 +41,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         sidebar_icon=PANEL_ICON,
         url_path=PANEL_URL_PATH,
         config={
-          "_js_url": f"/{PANEL_URL_PATH}/{JS_FILENAME}",
-          "name": "ha-panel-picture-elements-editor",
+            "_js_url": f"/{PANEL_URL_PATH}/{JS_FILENAME}",
+            "name": "ha-panel-picture-elements-editor",
         },
         require_admin=False,
     )
 
+    return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload Picture Elements Editor sidebar panel."""
+    frontend.async_remove_panel(hass, PANEL_URL_PATH)
     return True
