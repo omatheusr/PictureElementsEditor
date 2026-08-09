@@ -1,9 +1,18 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 
 @customElement('peb-image-selector')
 export class PebImageSelector extends LitElement {
   @property({ type: String }) value = '';
+
+  @state() private detectedImages: string[] = [
+    '/local/floorplan.png',
+    '/local/floorplan_dark.png',
+    '/local/living_room.png',
+    '/local/bedroom.png',
+    '/local/kitchen.png',
+    'https://demo.home-assistant.io/stub_config/floorplan.png',
+  ];
 
   static styles = css`
     :host {
@@ -13,13 +22,16 @@ export class PebImageSelector extends LitElement {
     .container {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
     label {
       font-size: 12px;
       font-weight: 600;
       color: var(--secondary-text-color, #aaaaaa);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .input-row {
@@ -42,34 +54,83 @@ export class PebImageSelector extends LitElement {
       border-color: var(--primary-color, #03a9f4);
     }
 
-    .quick-paths {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .path-chip {
+    .carousel-header {
       font-size: 11px;
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--secondary-text-color, #cccccc);
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.15s;
+      font-weight: 600;
+      color: var(--primary-color, #03a9f4);
+      margin-top: 2px;
     }
 
-    .path-chip:hover {
-      background: rgba(3, 169, 244, 0.2);
+    .image-carousel {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .image-carousel::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .image-carousel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .thumbnail-card {
+      flex: 0 0 auto;
+      width: 80px;
+      height: 60px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      position: relative;
+      background: #18181a;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .thumbnail-card:hover {
+      border-color: var(--primary-color, #03a9f4);
+      transform: scale(1.04);
+    }
+
+    .thumbnail-card.selected {
+      border-color: var(--primary-color, #03a9f4);
+      box-shadow: 0 0 8px rgba(3, 169, 244, 0.6);
+    }
+
+    .thumbnail-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .thumbnail-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.7);
       color: #ffffff;
+      font-size: 9px;
+      padding: 2px 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
     }
   `;
 
   private _onInputChange(e: Event) {
     const target = e.target as HTMLInputElement;
-    this._updateValue(target.value);
+    const val = target.value;
+    this._updateValue(val);
   }
 
-  private _setQuickPath(path: string) {
+  private _selectImage(path: string) {
     this._updateValue(path);
   }
 
@@ -87,22 +148,35 @@ export class PebImageSelector extends LitElement {
   render() {
     return html`
       <div class="container">
-        <label>Background Image URL / Local Path</label>
+        <label>
+          <span>Background Floorplan Image URL / Path</span>
+          <span class="carousel-header">📷 Image Directory Gallery</span>
+        </label>
+
         <div class="input-row">
           <input
             type="text"
             .value=${this.value || ''}
-            placeholder="/local/floorplan.png or https://..."
+            placeholder="/local/floorplan.png or /local/images/floorplan.jpg"
             @input=${this._onInputChange}
           />
         </div>
-        <div class="quick-paths">
-          <span class="path-chip" @click=${() => this._setQuickPath('/local/floorplan.png')}>
-            /local/floorplan.png
-          </span>
-          <span class="path-chip" @click=${() => this._setQuickPath('https://demo.home-assistant.io/stub_config/floorplan.png')}>
-            HA Stub Floorplan
-          </span>
+
+        <div class="image-carousel">
+          ${this.detectedImages.map((imgPath) => {
+            const isSel = this.value === imgPath;
+            const filename = imgPath.split('/').pop() || 'image';
+            return html`
+              <div
+                class="thumbnail-card ${isSel ? 'selected' : ''}"
+                title="${imgPath}"
+                @click=${() => this._selectImage(imgPath)}
+              >
+                <img src="${imgPath}" alt="${filename}" onerror="this.src='https://via.placeholder.com/80x60?text=Floorplan'" />
+                <div class="thumbnail-label">${filename}</div>
+              </div>
+            `;
+          })}
         </div>
       </div>
     `;

@@ -3292,6 +3292,7 @@ let PebCanvas = class PebCanvas extends i {
         this.selectedIndex = -1;
         this.isDragging = false;
         this.dragIndex = -1;
+        this.zoomScale = 1.0;
         this.dragStartX = 0;
         this.dragStartY = 0;
         this.initialTopPct = 50;
@@ -3305,10 +3306,11 @@ let PebCanvas = class PebCanvas extends i {
             const rect = wrapper.getBoundingClientRect();
             if (rect.width <= 0 || rect.height <= 0)
                 return;
-            const deltaX = e.clientX - this.dragStartX;
-            const deltaY = e.clientY - this.dragStartY;
-            const deltaLeftPct = (deltaX / rect.width) * 100;
-            const deltaTopPct = (deltaY / rect.height) * 100;
+            // Account for zoom scale when dragging
+            const deltaX = (e.clientX - this.dragStartX) / this.zoomScale;
+            const deltaY = (e.clientY - this.dragStartY) / this.zoomScale;
+            const deltaLeftPct = (deltaX / (rect.width / this.zoomScale)) * 100;
+            const deltaTopPct = (deltaY / (rect.height / this.zoomScale)) * 100;
             let newLeftPct = Math.min(Math.max(this.initialLeftPct + deltaLeftPct, 0), 100);
             let newTopPct = Math.min(Math.max(this.initialTopPct + deltaTopPct, 0), 100);
             newLeftPct = Math.round(newLeftPct * 10) / 10;
@@ -3336,35 +3338,94 @@ let PebCanvas = class PebCanvas extends i {
     static { this.styles = i$3 `
     :host {
       display: flex;
+      flex-direction: column;
       flex: 1;
       height: 100%;
       position: relative;
       background: #121214;
+      overflow: hidden;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    .canvas-toolbar {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      z-index: 200;
+      background: rgba(30, 30, 32, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .zoom-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .zoom-btn:hover {
+      background: var(--primary-color, #03a9f4);
+    }
+
+    .zoom-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #cccccc;
+      min-width: 42px;
+      text-align: center;
+    }
+
+    .viewport-scroll {
+      width: 100%;
+      height: 100%;
       overflow: auto;
+      display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
       box-sizing: border-box;
-      user-select: none;
     }
 
     .canvas-wrapper {
       position: relative;
       display: inline-block;
       max-width: 100%;
+      max-height: 80vh;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: #1c1c1e;
-      min-width: 300px;
-      min-height: 200px;
+      transition: transform 0.15s ease-out;
+      transform-origin: center center;
     }
 
     .background-img {
       display: block;
       max-width: 100%;
+      max-height: 80vh;
+      width: auto;
       height: auto;
+      object-fit: contain;
       pointer-events: none;
     }
 
@@ -3448,6 +3509,15 @@ let PebCanvas = class PebCanvas extends i {
       pointer-events: none;
     }
   `; }
+    _zoomIn() {
+        this.zoomScale = Math.min(this.zoomScale + 0.15, 2.5);
+    }
+    _zoomOut() {
+        this.zoomScale = Math.max(this.zoomScale - 0.15, 0.4);
+    }
+    _zoomReset() {
+        this.zoomScale = 1.0;
+    }
     _onMouseDown(e, index) {
         e.stopPropagation();
         this.selectedIndex = index;
@@ -3517,26 +3587,38 @@ let PebCanvas = class PebCanvas extends i {
     render() {
         const validElements = Array.isArray(this.elements) ? this.elements : [];
         return b `
-      <div class="canvas-wrapper">
-        <img
-          class="background-img"
-          src="${this.image || 'https://demo.home-assistant.io/stub_config/floorplan.png'}"
-          alt="Floorplan Background"
-        />
-        ${validElements.map((el, index) => {
+      <div class="canvas-toolbar">
+        <button class="zoom-btn" title="Zoom Out" @click=${this._zoomOut}>−</button>
+        <span class="zoom-text">${Math.round(this.zoomScale * 100)}%</span>
+        <button class="zoom-btn" title="Zoom In" @click=${this._zoomIn}>+</button>
+        <button class="zoom-btn" title="Reset Fit" @click=${this._zoomReset}>⟲</button>
+      </div>
+
+      <div class="viewport-scroll">
+        <div
+          class="canvas-wrapper"
+          style="transform: scale(${this.zoomScale});"
+        >
+          <img
+            class="background-img"
+            src="${this.image || 'https://demo.home-assistant.io/stub_config/floorplan.png'}"
+            alt="Floorplan Background"
+          />
+          ${validElements.map((el, index) => {
             const isSelected = index === this.selectedIndex;
             const styleAttr = computeStyleString(el?.style);
             return b `
-            <div
-              class="element-wrapper ${isSelected ? 'selected' : ''}"
-              style="${styleAttr}"
-              @mousedown=${(e) => this._onMouseDown(e, index)}
-            >
-              ${isSelected ? b `<span class="element-tag">#${index + 1} ${el?.type || 'element'}</span>` : ''}
-              ${this._renderElementContent(el || { type: 'unknown' })}
-            </div>
-          `;
+              <div
+                class="element-wrapper ${isSelected ? 'selected' : ''}"
+                style="${styleAttr}"
+                @mousedown=${(e) => this._onMouseDown(e, index)}
+              >
+                ${isSelected ? b `<span class="element-tag">#${index + 1} ${el?.type || 'element'}</span>` : ''}
+                ${this._renderElementContent(el || { type: 'unknown' })}
+              </div>
+            `;
         })}
+        </div>
       </div>
     `;
     }
@@ -3559,6 +3641,9 @@ __decorate([
 __decorate([
     r()
 ], PebCanvas.prototype, "dragIndex", void 0);
+__decorate([
+    r()
+], PebCanvas.prototype, "zoomScale", void 0);
 PebCanvas = __decorate([
     t('peb-canvas')
 ], PebCanvas);
@@ -4688,6 +4773,19 @@ let PebPalette = class PebPalette extends i {
                 },
             },
             {
+                label: 'TV Remote Overlay (custom:tv-card)',
+                description: 'Custom TV remote card overlay with custom keys, power, volume, and app buttons.',
+                icon: 'television',
+                config: {
+                    type: 'custom:tv-card',
+                    entity: 'media_player.tv_living_room',
+                    remote_id: 'remote.tv_living_room',
+                    name: 'TV Remote',
+                    tv: true,
+                    style: { top: '50%', left: '50%', width: '280px' },
+                },
+            },
+            {
                 label: 'Conditional Element',
                 description: 'Displays child elements only when entity state condition rules pass.',
                 icon: 'filter',
@@ -5039,6 +5137,14 @@ let PebImageSelector = class PebImageSelector extends i {
     constructor() {
         super(...arguments);
         this.value = '';
+        this.detectedImages = [
+            '/local/floorplan.png',
+            '/local/floorplan_dark.png',
+            '/local/living_room.png',
+            '/local/bedroom.png',
+            '/local/kitchen.png',
+            'https://demo.home-assistant.io/stub_config/floorplan.png',
+        ];
     }
     static { this.styles = i$3 `
     :host {
@@ -5048,13 +5154,16 @@ let PebImageSelector = class PebImageSelector extends i {
     .container {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
     label {
       font-size: 12px;
       font-weight: 600;
       color: var(--secondary-text-color, #aaaaaa);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .input-row {
@@ -5077,32 +5186,81 @@ let PebImageSelector = class PebImageSelector extends i {
       border-color: var(--primary-color, #03a9f4);
     }
 
-    .quick-paths {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .path-chip {
+    .carousel-header {
       font-size: 11px;
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--secondary-text-color, #cccccc);
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.15s;
+      font-weight: 600;
+      color: var(--primary-color, #03a9f4);
+      margin-top: 2px;
     }
 
-    .path-chip:hover {
-      background: rgba(3, 169, 244, 0.2);
+    .image-carousel {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .image-carousel::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .image-carousel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .thumbnail-card {
+      flex: 0 0 auto;
+      width: 80px;
+      height: 60px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      position: relative;
+      background: #18181a;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .thumbnail-card:hover {
+      border-color: var(--primary-color, #03a9f4);
+      transform: scale(1.04);
+    }
+
+    .thumbnail-card.selected {
+      border-color: var(--primary-color, #03a9f4);
+      box-shadow: 0 0 8px rgba(3, 169, 244, 0.6);
+    }
+
+    .thumbnail-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .thumbnail-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.7);
       color: #ffffff;
+      font-size: 9px;
+      padding: 2px 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
     }
   `; }
     _onInputChange(e) {
         const target = e.target;
-        this._updateValue(target.value);
+        const val = target.value;
+        this._updateValue(val);
     }
-    _setQuickPath(path) {
+    _selectImage(path) {
         this._updateValue(path);
     }
     _updateValue(val) {
@@ -5116,22 +5274,35 @@ let PebImageSelector = class PebImageSelector extends i {
     render() {
         return b `
       <div class="container">
-        <label>Background Image URL / Local Path</label>
+        <label>
+          <span>Background Floorplan Image URL / Path</span>
+          <span class="carousel-header">📷 Image Directory Gallery</span>
+        </label>
+
         <div class="input-row">
           <input
             type="text"
             .value=${this.value || ''}
-            placeholder="/local/floorplan.png or https://..."
+            placeholder="/local/floorplan.png or /local/images/floorplan.jpg"
             @input=${this._onInputChange}
           />
         </div>
-        <div class="quick-paths">
-          <span class="path-chip" @click=${() => this._setQuickPath('/local/floorplan.png')}>
-            /local/floorplan.png
-          </span>
-          <span class="path-chip" @click=${() => this._setQuickPath('https://demo.home-assistant.io/stub_config/floorplan.png')}>
-            HA Stub Floorplan
-          </span>
+
+        <div class="image-carousel">
+          ${this.detectedImages.map((imgPath) => {
+            const isSel = this.value === imgPath;
+            const filename = imgPath.split('/').pop() || 'image';
+            return b `
+              <div
+                class="thumbnail-card ${isSel ? 'selected' : ''}"
+                title="${imgPath}"
+                @click=${() => this._selectImage(imgPath)}
+              >
+                <img src="${imgPath}" alt="${filename}" onerror="this.src='https://via.placeholder.com/80x60?text=Floorplan'" />
+                <div class="thumbnail-label">${filename}</div>
+              </div>
+            `;
+        })}
         </div>
       </div>
     `;
@@ -5140,6 +5311,9 @@ let PebImageSelector = class PebImageSelector extends i {
 __decorate([
     n({ type: String })
 ], PebImageSelector.prototype, "value", void 0);
+__decorate([
+    r()
+], PebImageSelector.prototype, "detectedImages", void 0);
 PebImageSelector = __decorate([
     t('peb-image-selector')
 ], PebImageSelector);

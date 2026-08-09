@@ -199,6 +199,19 @@ export class PebPalette extends LitElement {
       },
     },
     {
+      label: 'TV Remote Overlay (custom:tv-card)',
+      description: 'Custom TV remote card overlay with custom keys, power, volume, and app buttons.',
+      icon: 'television',
+      config: {
+        type: 'custom:tv-card',
+        entity: 'media_player.tv_living_room',
+        remote_id: 'remote.tv_living_room',
+        name: 'TV Remote',
+        tv: true,
+        style: { top: '50%', left: '50%', width: '280px' },
+      },
+    },
+    {
       label: 'Conditional Element',
       description: 'Displays child elements only when entity state condition rules pass.',
       icon: 'filter',

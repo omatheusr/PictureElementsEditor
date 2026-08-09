@@ -12,6 +12,7 @@ export class PebCanvas extends LitElement {
 
   @state() private isDragging = false;
   @state() private dragIndex = -1;
+  @state() private zoomScale = 1.0;
   private dragStartX = 0;
   private dragStartY = 0;
   private initialTopPct = 50;
@@ -20,35 +21,94 @@ export class PebCanvas extends LitElement {
   static styles = css`
     :host {
       display: flex;
+      flex-direction: column;
       flex: 1;
       height: 100%;
       position: relative;
       background: #121214;
+      overflow: hidden;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    .canvas-toolbar {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      z-index: 200;
+      background: rgba(30, 30, 32, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .zoom-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .zoom-btn:hover {
+      background: var(--primary-color, #03a9f4);
+    }
+
+    .zoom-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #cccccc;
+      min-width: 42px;
+      text-align: center;
+    }
+
+    .viewport-scroll {
+      width: 100%;
+      height: 100%;
       overflow: auto;
+      display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
       box-sizing: border-box;
-      user-select: none;
     }
 
     .canvas-wrapper {
       position: relative;
       display: inline-block;
       max-width: 100%;
+      max-height: 80vh;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: #1c1c1e;
-      min-width: 300px;
-      min-height: 200px;
+      transition: transform 0.15s ease-out;
+      transform-origin: center center;
     }
 
     .background-img {
       display: block;
       max-width: 100%;
+      max-height: 80vh;
+      width: auto;
       height: auto;
+      object-fit: contain;
       pointer-events: none;
     }
 
@@ -133,6 +193,18 @@ export class PebCanvas extends LitElement {
     }
   `;
 
+  private _zoomIn() {
+    this.zoomScale = Math.min(this.zoomScale + 0.15, 2.5);
+  }
+
+  private _zoomOut() {
+    this.zoomScale = Math.max(this.zoomScale - 0.15, 0.4);
+  }
+
+  private _zoomReset() {
+    this.zoomScale = 1.0;
+  }
+
   private _onMouseDown(e: MouseEvent, index: number) {
     e.stopPropagation();
     this.selectedIndex = index;
@@ -169,11 +241,12 @@ export class PebCanvas extends LitElement {
     const rect = wrapper.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
 
-    const deltaX = e.clientX - this.dragStartX;
-    const deltaY = e.clientY - this.dragStartY;
+    // Account for zoom scale when dragging
+    const deltaX = (e.clientX - this.dragStartX) / this.zoomScale;
+    const deltaY = (e.clientY - this.dragStartY) / this.zoomScale;
 
-    const deltaLeftPct = (deltaX / rect.width) * 100;
-    const deltaTopPct = (deltaY / rect.height) * 100;
+    const deltaLeftPct = (deltaX / (rect.width / this.zoomScale)) * 100;
+    const deltaTopPct = (deltaY / (rect.height / this.zoomScale)) * 100;
 
     let newLeftPct = Math.min(Math.max(this.initialLeftPct + deltaLeftPct, 0), 100);
     let newTopPct = Math.min(Math.max(this.initialTopPct + deltaTopPct, 0), 100);
@@ -256,26 +329,38 @@ export class PebCanvas extends LitElement {
   render() {
     const validElements = Array.isArray(this.elements) ? this.elements : [];
     return html`
-      <div class="canvas-wrapper">
-        <img
-          class="background-img"
-          src="${this.image || 'https://demo.home-assistant.io/stub_config/floorplan.png'}"
-          alt="Floorplan Background"
-        />
-        ${validElements.map((el, index) => {
-          const isSelected = index === this.selectedIndex;
-          const styleAttr = computeStyleString(el?.style);
-          return html`
-            <div
-              class="element-wrapper ${isSelected ? 'selected' : ''}"
-              style="${styleAttr}"
-              @mousedown=${(e: MouseEvent) => this._onMouseDown(e, index)}
-            >
-              ${isSelected ? html`<span class="element-tag">#${index + 1} ${el?.type || 'element'}</span>` : ''}
-              ${this._renderElementContent(el || { type: 'unknown' })}
-            </div>
-          `;
-        })}
+      <div class="canvas-toolbar">
+        <button class="zoom-btn" title="Zoom Out" @click=${this._zoomOut}>−</button>
+        <span class="zoom-text">${Math.round(this.zoomScale * 100)}%</span>
+        <button class="zoom-btn" title="Zoom In" @click=${this._zoomIn}>+</button>
+        <button class="zoom-btn" title="Reset Fit" @click=${this._zoomReset}>⟲</button>
+      </div>
+
+      <div class="viewport-scroll">
+        <div
+          class="canvas-wrapper"
+          style="transform: scale(${this.zoomScale});"
+        >
+          <img
+            class="background-img"
+            src="${this.image || 'https://demo.home-assistant.io/stub_config/floorplan.png'}"
+            alt="Floorplan Background"
+          />
+          ${validElements.map((el, index) => {
+            const isSelected = index === this.selectedIndex;
+            const styleAttr = computeStyleString(el?.style);
+            return html`
+              <div
+                class="element-wrapper ${isSelected ? 'selected' : ''}"
+                style="${styleAttr}"
+                @mousedown=${(e: MouseEvent) => this._onMouseDown(e, index)}
+              >
+                ${isSelected ? html`<span class="element-tag">#${index + 1} ${el?.type || 'element'}</span>` : ''}
+                ${this._renderElementContent(el || { type: 'unknown' })}
+              </div>
+            `;
+          })}
+        </div>
       </div>
     `;
   }
