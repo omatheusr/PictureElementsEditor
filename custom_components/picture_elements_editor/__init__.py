@@ -2,7 +2,7 @@
 import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.components import frontend
+from homeassistant.components import panel_custom
 from homeassistant.components.http import StaticPathConfig
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,17 +33,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception as err:
         _LOGGER.debug("Static path registration notice: %s", err)
 
-    # Register custom panel in Home Assistant main left sidebar navigator
-    frontend.async_register_built_in_panel(
+    # Register custom panel using panel_custom (official Home Assistant custom panel API)
+    await panel_custom.async_register_panel(
         hass,
-        component_name="custom",
+        webcomponent_name="ha-panel-picture-elements-editor",
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        frontend_url_path=PANEL_URL_PATH,
-        config={
-            "_js_url": f"/{PANEL_URL_PATH}/{JS_FILENAME}",
-            "name": "ha-panel-picture-elements-editor",
-        },
+        url_path=PANEL_URL_PATH,
+        js_url=f"/{PANEL_URL_PATH}/{JS_FILENAME}",
+        embed_iframe=False,
         require_admin=False,
     )
 
@@ -51,5 +49,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Picture Elements Editor sidebar panel."""
-    frontend.async_remove_panel(hass, frontend_url_path=PANEL_URL_PATH)
+    panel_custom.async_remove_panel(hass, url_path=PANEL_URL_PATH)
     return True
