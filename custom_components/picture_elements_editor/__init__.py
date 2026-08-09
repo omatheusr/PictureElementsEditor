@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         ])
     except Exception as err:
-        _LOGGER.debug("Static path already registered or updated: %s", err)
+        _LOGGER.debug("Static path registration notice: %s", err)
 
     # Register custom panel in Home Assistant main left sidebar navigator
     frontend.async_register_built_in_panel(
@@ -39,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         component_name="custom",
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        url_path=PANEL_URL_PATH,
+        frontend_url_path=PANEL_URL_PATH,
         config={
             "_js_url": f"/{PANEL_URL_PATH}/{JS_FILENAME}",
             "name": "ha-panel-picture-elements-editor",
@@ -51,5 +51,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Picture Elements Editor sidebar panel."""
-    frontend.async_remove_panel(hass, PANEL_URL_PATH)
+    frontend.async_remove_panel(hass, frontend_url_path=PANEL_URL_PATH)
     return True
