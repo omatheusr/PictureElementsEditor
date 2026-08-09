@@ -1,0 +1,8 @@
+{
+  "name": "Picture Elements Visual Editor",
+  "content_in_root": false,
+  "filename": "picture-elements-editor.js",
+  "render_readme": true,
+  "homeassistant": "2024.1.0",
+  "zip_release": false
+}
