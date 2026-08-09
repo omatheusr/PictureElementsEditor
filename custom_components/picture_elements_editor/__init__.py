@@ -36,10 +36,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register custom panel using panel_custom (official Home Assistant custom panel API)
     await panel_custom.async_register_panel(
         hass,
+        frontend_url_path=PANEL_URL_PATH,
         webcomponent_name="ha-panel-picture-elements-editor",
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        url_path=PANEL_URL_PATH,
         js_url=f"/{PANEL_URL_PATH}/{JS_FILENAME}",
         embed_iframe=False,
         require_admin=False,
@@ -49,5 +49,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Picture Elements Editor sidebar panel."""
-    panel_custom.async_remove_panel(hass, url_path=PANEL_URL_PATH)
+    panel_custom.async_remove_panel(hass, frontend_url_path=PANEL_URL_PATH)
     return True
