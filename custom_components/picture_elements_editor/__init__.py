@@ -33,14 +33,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception as err:
         _LOGGER.debug("Static path registration notice: %s", err)
 
-    # Register custom panel using positional parameters for maximum HA compatibility
+    # Register custom panel using module_url (required for LitElement ES Modules)
     await panel_custom.async_register_panel(
         hass,
         PANEL_URL_PATH,
         "ha-panel-picture-elements-editor",
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        js_url=f"/{PANEL_URL_PATH}/{JS_FILENAME}",
+        module_url=f"/{PANEL_URL_PATH}/{JS_FILENAME}",
         embed_iframe=False,
         require_admin=False,
     )

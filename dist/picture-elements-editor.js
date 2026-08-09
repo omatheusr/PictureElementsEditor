@@ -5147,6 +5147,7 @@ let PictureElementsEditor = class PictureElementsEditor extends i {
       border-radius: 0;
       border: none;
       height: 100vh;
+      width: 100%;
     }
 
     .header-bar {
@@ -5423,7 +5424,7 @@ __decorate([
     n({ type: Object })
 ], PictureElementsEditor.prototype, "hass", void 0);
 __decorate([
-    n({ type: Boolean })
+    n({ type: Boolean, reflect: true })
 ], PictureElementsEditor.prototype, "isPanel", void 0);
 __decorate([
     r()
@@ -5448,11 +5449,13 @@ let HaPanelPictureElementsEditor = class HaPanelPictureElementsEditor extends i 
     }
     static { this.styles = i$3 `
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       height: 100vh;
-      width: 100vw;
+      width: 100%;
       background: var(--primary-background-color, #121214);
       overflow: hidden;
+      box-sizing: border-box;
     }
   `; }
     render() {

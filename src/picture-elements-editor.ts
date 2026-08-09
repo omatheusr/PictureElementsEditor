@@ -18,7 +18,7 @@ import './components/peb-image-selector';
 @customElement('picture-elements-editor')
 export class PictureElementsEditor extends LitElement {
   @property({ type: Object }) public hass?: HomeAssistant;
-  @property({ type: Boolean }) public isPanel = false;
+  @property({ type: Boolean, reflect: true }) public isPanel = false;
 
   @state() private config: PictureElementsCardConfig = createDefaultConfig();
   @state() private selectedIndex = -1;
@@ -61,6 +61,7 @@ export class PictureElementsEditor extends LitElement {
       border-radius: 0;
       border: none;
       height: 100vh;
+      width: 100%;
     }
 
     .header-bar {
@@ -363,11 +364,13 @@ export class HaPanelPictureElementsEditor extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       height: 100vh;
-      width: 100vw;
+      width: 100%;
       background: var(--primary-background-color, #121214);
       overflow: hidden;
+      box-sizing: border-box;
     }
   `;
 
