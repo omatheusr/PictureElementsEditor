@@ -32,6 +32,13 @@ export interface HomeAssistant {
     language: string;
     callService: (domain: string, service: string, serviceData?: Record<string, any>) => Promise<void>;
 }
+export interface PanelInfo {
+    component_name: string;
+    config: Record<string, any> | null;
+    icon: string | null;
+    title: string | null;
+    url_path: string;
+}
 export interface ActionConfig {
     action: 'more-info' | 'toggle' | 'perform-action' | 'call-service' | 'navigate' | 'url' | 'none';
     perform_action?: string;

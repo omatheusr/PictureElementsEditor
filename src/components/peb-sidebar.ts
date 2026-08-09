@@ -12,6 +12,8 @@ export class PebSidebar extends LitElement {
 
   @state() private activeTooltip: string | null = null;
   @state() private activeActionTab: 'tap_action' | 'hold_action' | 'double_tap_action' = 'tap_action';
+  @state() private newCustomStyleKey = '';
+  @state() private newCustomStyleValue = '';
 
   static styles = css`
     :host {
@@ -138,6 +140,7 @@ export class PebSidebar extends LitElement {
 
     input[type='text'],
     input[type='number'],
+    input[type='color'],
     textarea,
     select {
       width: 100%;
@@ -148,6 +151,12 @@ export class PebSidebar extends LitElement {
       border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.15));
       font-size: 13px;
       box-sizing: border-box;
+    }
+
+    input[type='color'] {
+      height: 36px;
+      padding: 2px 4px;
+      cursor: pointer;
     }
 
     input:focus,
@@ -203,7 +212,7 @@ export class PebSidebar extends LitElement {
       color: #ffffff;
     }
 
-    .condition-card {
+    .condition-card, .custom-style-card {
       background: rgba(0, 0, 0, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 6px;
@@ -211,6 +220,21 @@ export class PebSidebar extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 6px;
+    }
+
+    .custom-style-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      padding: 4px 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .custom-style-row code {
+      color: #76e2ef;
+      font-family: monospace;
     }
 
     .btn-small {
@@ -263,12 +287,23 @@ export class PebSidebar extends LitElement {
     if (!this.element) return;
     const updated = JSON.parse(JSON.stringify(this.element));
     if (!updated.style) updated.style = {};
-    if (value === '') {
+    if (value === '' || value === null) {
       delete updated.style[propertyKey];
     } else {
       updated.style[propertyKey] = value;
     }
     this._dispatchElementUpdate(updated);
+  }
+
+  private _addCustomStyleProperty() {
+    if (!this.element || !this.newCustomStyleKey) return;
+    this._updateStyle(this.newCustomStyleKey.trim(), this.newCustomStyleValue.trim());
+    this.newCustomStyleKey = '';
+    this.newCustomStyleValue = '';
+  }
+
+  private _removeCustomStyleProperty(key: string) {
+    this._updateStyle(key, '');
   }
 
   private _updateAction(
@@ -859,6 +894,174 @@ export class PebSidebar extends LitElement {
                   this._updateStyle('left', (e.target as HTMLInputElement).value)}
               />
             </div>
+          </div>
+        </div>
+
+        <!-- Appearance, Color & Transparency Section -->
+        <div class="section">
+          <div class="section-title">
+            <span>Appearance & Transparency</span>
+            ${this._renderHelpBtn(
+              'style-help',
+              'Adjust text color, background colors, opacity, dimensions, borders, and shadows.'
+            )}
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Text / Icon Color</label>
+              <input
+                type="text"
+                .value=${style.color || ''}
+                placeholder="#ffffff"
+                @change=${(e: Event) =>
+                  this._updateStyle('color', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <div class="form-group">
+              <label>Opacity (0 - 1)</label>
+              <input
+                type="text"
+                .value=${style.opacity || ''}
+                placeholder="0.85"
+                @change=${(e: Event) =>
+                  this._updateStyle('opacity', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Background Color / Alpha</label>
+            <input
+              type="text"
+              .value=${style.backgroundColor || ''}
+              placeholder="rgba(0, 0, 0, 0.6)"
+              @change=${(e: Event) =>
+                this._updateStyle('backgroundColor', (e.target as HTMLInputElement).value)}
+            />
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Width</label>
+              <input
+                type="text"
+                .value=${style.width || ''}
+                placeholder="auto / 120px / 20%"
+                @change=${(e: Event) =>
+                  this._updateStyle('width', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <div class="form-group">
+              <label>Height</label>
+              <input
+                type="text"
+                .value=${style.height || ''}
+                placeholder="auto / 40px"
+                @change=${(e: Event) =>
+                  this._updateStyle('height', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Padding</label>
+              <input
+                type="text"
+                .value=${style.padding || ''}
+                placeholder="4px 8px"
+                @change=${(e: Event) =>
+                  this._updateStyle('padding', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <div class="form-group">
+              <label>Border Radius</label>
+              <input
+                type="text"
+                .value=${style.borderRadius || ''}
+                placeholder="6px / 50%"
+                @change=${(e: Event) =>
+                  this._updateStyle('borderRadius', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Border</label>
+            <input
+              type="text"
+              .value=${style.border || ''}
+              placeholder="1px solid rgba(255,255,255,0.2)"
+              @change=${(e: Event) =>
+                this._updateStyle('border', (e.target as HTMLInputElement).value)}
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Box Shadow</label>
+            <input
+              type="text"
+              .value=${style.boxShadow || ''}
+              placeholder="0 4px 12px rgba(0,0,0,0.5)"
+              @change=${(e: Event) =>
+                this._updateStyle('boxShadow', (e.target as HTMLInputElement).value)}
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Transform / Rotation</label>
+            <input
+              type="text"
+              .value=${style.transform || ''}
+              placeholder="translate(-50%, -50%) rotate(45deg)"
+              @change=${(e: Event) =>
+                this._updateStyle('transform', (e.target as HTMLInputElement).value)}
+            />
+          </div>
+        </div>
+
+        <!-- Custom CSS Key-Value Property Grid -->
+        <div class="section">
+          <div class="section-title">
+            <span>Custom CSS Properties</span>
+            ${this._renderHelpBtn(
+              'custom-css-help',
+              'Add any arbitrary CSS property key and value pair (e.g. mix-blend-mode, backdrop-filter, z-index).'
+            )}
+          </div>
+
+          ${Object.entries(style).map(([k, v]) => html`
+            <div class="custom-style-row">
+              <span><code>${k}</code>: ${v}</span>
+              <button
+                class="btn-small"
+                style="color: #f44336;"
+                @click=${() => this._removeCustomStyleProperty(k)}
+              >
+                ✕
+              </button>
+            </div>
+          `)}
+
+          <div class="custom-style-card">
+            <div class="grid-2">
+              <input
+                type="text"
+                .value=${this.newCustomStyleKey}
+                placeholder="CSS Property (e.g. filter)"
+                @input=${(e: Event) => (this.newCustomStyleKey = (e.target as HTMLInputElement).value)}
+              />
+              <input
+                type="text"
+                .value=${this.newCustomStyleValue}
+                placeholder="Value (e.g. blur(2px))"
+                @input=${(e: Event) => (this.newCustomStyleValue = (e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <button class="btn-small" @click=${this._addCustomStyleProperty}>
+              + Add CSS Rule
+            </button>
           </div>
         </div>
 

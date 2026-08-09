@@ -4,6 +4,7 @@ import {
   PictureElementsCardConfig,
   PictureElementConfig,
   HomeAssistant,
+  PanelInfo,
 } from './types';
 import { createDefaultConfig } from './utils/yaml-helpers';
 
@@ -17,6 +18,7 @@ import './components/peb-image-selector';
 @customElement('picture-elements-editor')
 export class PictureElementsEditor extends LitElement {
   @property({ type: Object }) public hass?: HomeAssistant;
+  @property({ type: Boolean }) public isPanel = false;
 
   @state() private config: PictureElementsCardConfig = createDefaultConfig();
   @state() private selectedIndex = -1;
@@ -43,8 +45,8 @@ export class PictureElementsEditor extends LitElement {
     :host {
       display: flex;
       flex-direction: column;
-      height: 720px;
-      max-height: 90vh;
+      height: 100%;
+      min-height: 720px;
       background: var(--ha-card-background, #1c1c1e);
       border-radius: 12px;
       overflow: hidden;
@@ -52,10 +54,17 @@ export class PictureElementsEditor extends LitElement {
       font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
       border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.1));
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-sizing: border-box;
+    }
+
+    :host([ispanel]) {
+      border-radius: 0;
+      border: none;
+      height: 100vh;
     }
 
     .header-bar {
-      height: 54px;
+      height: 56px;
       background: #242426;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
@@ -69,6 +78,23 @@ export class PictureElementsEditor extends LitElement {
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .sidebar-menu-btn {
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sidebar-menu-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .title-group h2 {
@@ -146,6 +172,15 @@ export class PictureElementsEditor extends LitElement {
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
   `;
+
+  private _toggleHASidebar() {
+    this.dispatchEvent(
+      new CustomEvent('hass-toggle-menu', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
 
   private _onImageChanged(e: CustomEvent) {
     this.config = {
@@ -233,6 +268,17 @@ export class PictureElementsEditor extends LitElement {
     return html`
       <div class="header-bar">
         <div class="title-group">
+          ${this.isPanel
+            ? html`
+                <button
+                  class="sidebar-menu-btn"
+                  title="Toggle Home Assistant Menu"
+                  @click=${this._toggleHASidebar}
+                >
+                  ☰
+                </button>
+              `
+            : ''}
           <h2>🖼️ Picture Elements Visual Editor</h2>
           <div class="tabs">
             <button
@@ -304,6 +350,34 @@ export class PictureElementsEditor extends LitElement {
               ></peb-yaml-editor>
             `}
       </div>
+    `;
+  }
+}
+
+// Register as Home Assistant Main Left Sidebar Panel (<ha-panel-picture-elements-editor>)
+@customElement('ha-panel-picture-elements-editor')
+export class HaPanelPictureElementsEditor extends LitElement {
+  @property({ type: Object }) public hass!: HomeAssistant;
+  @property({ type: Boolean }) public narrow = false;
+  @property({ type: Object }) public panel!: PanelInfo;
+
+  static styles = css`
+    :host {
+      display: block;
+      height: 100vh;
+      width: 100vw;
+      background: var(--primary-background-color, #121214);
+      overflow: hidden;
+    }
+  `;
+
+  render() {
+    return html`
+      <picture-elements-editor
+        .hass=${this.hass}
+        .isPanel=${true}
+        ispanel
+      ></picture-elements-editor>
     `;
   }
 }
